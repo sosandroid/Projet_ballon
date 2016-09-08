@@ -207,12 +207,12 @@ void setup()
 
 	rf95.setFrequency(RF_FREQ);
 	rf95.setModemRegisters(&confModem);
-	//rf95.setHeaderId(HEADERID_MAINDATA); //prevent data to be send & / or received
+	//rf95.setHeaderId(HEADERID_MAINDATA); //Headers manipulation does not work. Seems to block data transmission
 	
 	#ifdef TRANSMITER
 		rf95.setTxPower(RF_TXPOWER, false);
-		//rf95.setHeaderFrom(CLIENT_ADDRESS); //prevent data to be send & / or received
-		//rf95.setHeaderTo(GATEWAY_ADDRESS); //prevent data to be send & / or received
+		//rf95.setHeaderFrom(CLIENT_ADDRESS); //Headers manipulation does not work. Seems to block data transmission
+		//rf95.setHeaderTo(GATEWAY_ADDRESS); //Headers manipulation does not work. Seems to block data transmission
 
 		mydata.structuredData.data1 = 0x00;
 		mydata.structuredData.data2 = 0xFFFF;
@@ -223,8 +223,8 @@ void setup()
 	#endif
 	
 	#ifdef RECEIVER
-		//rf95.setHeaderFrom(GATEWAY_ADDRESS);  //prevent data to be send & / or received
-		//rf95.setHeaderTo(CLIENT_ADDRESS);  //prevent data to be send & / or received
+		//rf95.setHeaderFrom(GATEWAY_ADDRESS);  //Headers manipulation does not work. Seems to block data transmission
+		//rf95.setHeaderTo(CLIENT_ADDRESS);  //Headers manipulation does not work. Seems to block data transmission
 
 		mydata.structuredData.data1 = 0x00;
 		mydata.structuredData.data2 = 0x00;
@@ -278,12 +278,13 @@ void sendData() {
 	bool rfok;
 	unsigned long timing = millis();
 	
-	rf95.waitPacketSent();
+	rf95.waitPacketSent(RF_TXTIMEOUT); //Do not try to sent anything if modem not ready
 	rfok = rf95.send(mydata.txData, txData_size);
-	while(!rf95.waitPacketSent(RF_TXTIMEOUT));
+	rf95.waitPacketSent(RF_TXTIMEOUT); //Wait for the transmission done
+	
 	sumupTransmission(millis() - timing, rfok);
 	if (rfok) blinkled(); //if data transmitted, blink
-	//rf95.setModeIdle();
+	rf95.setModeIdle();
 }
 
 void recvData() {
@@ -293,20 +294,22 @@ void recvData() {
 	uint8_t HFrom;
 	uint8_t HId;
 	
-	if(rf95.recv(buf, &len)) {
-		//rf95.available();
-		//rf95.recv(buf, &len);
+	if(rf95.available()) {
+
+		//Headers manipulation does not work. Seems to block data transmission
 		//HTo = rf95.headerTo();//prevent data to be send & / or received
 		//HFrom = rf95.headerFrom();//prevent data to be send & / or received
 		//HId = rf95.headerId(); //prevent data to be send & / or received
-		
 		//if((HFrom == CLIENT_ADDRESS) && (HId == HEADERID_MAINDATA)) { 	//check sender and data type - does not work
+		
+		
+		if(rf95.recv(buf, &len)) {
 				for (uint8_t i = 0; i < txData_size; i++) {
 					mydata.txData[i] = buf[i];							//probably not the best way to work
 				}
 			new_data = true;
 			
-		//}
+		}
 		blinkled(); // blink each received packet whatever data is
 		printData();
 	}
